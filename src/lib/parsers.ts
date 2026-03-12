@@ -105,7 +105,7 @@ export function parseKeywords(rows: Record<string, string>[]): KeywordRow[] {
       impressions_curr: parseNum(r.impressions_curr || r.curr_impressions || r.impressions || '0'),
       position_prev: parseNum(r.position_prev || r.prev_position || '0'),
       position_curr: parseNum(r.position_curr || r.curr_position || r.position || '0'),
-      trend: change > 5 ? 'up' : change < -5 ? 'down' : 'flat',
+      trend: (change > 5 ? 'up' : change < -5 ? 'down' : 'flat') as 'up' | 'down' | 'flat',
       change_pct: change,
     }
   }).filter((r) => r.keyword)
