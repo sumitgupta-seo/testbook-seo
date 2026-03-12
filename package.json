@@ -1,0 +1,35 @@
+{
+  "name": "testbook-seasonal-seo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.2.4",
+    "react": "^19",
+    "react-dom": "^19",
+    "papaparse": "^5.4.1",
+    "xlsx": "^0.18.5",
+    "recharts": "^2.12.7",
+    "date-fns": "^3.6.0",
+    "lucide-react": "^0.400.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/papaparse": "^5.3.14",
+    "autoprefixer": "^10.0.1",
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5",
+    "eslint": "^9",
+    "eslint-config-next": "^15.2.4"
+  }
+}

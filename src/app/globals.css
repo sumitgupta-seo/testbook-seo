@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-orange: #E05A1A;
+  --brand-blue: #185FA5;
+  --brand-green: #3B6D11;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+/* Tab active */
+.tab-active {
+  background: white;
+  color: #111;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Badge variants */
+.badge-exam    { background: #E6F1FB; color: #0C447C; }
+.badge-govt    { background: #FAEEDA; color: #633806; }
+.badge-season  { background: #EAF3DE; color: #27500A; }
+.badge-competitive { background: #FBEAF0; color: #72243E; }
+.badge-custom  { background: #F1EFE8; color: #444441; }
+
+/* Status pills */
+.status-live    { background: #EAF3DE; color: #27500A; }
+.status-prep    { background: #FAEEDA; color: #633806; }
+.status-planned { background: #E6F1FB; color: #0C447C; }
+.status-done    { background: #F1EFE8; color: #888780; }
+
+/* Insight type */
+.insight-opportunity { border-left: 3px solid #185FA5; background: #E6F1FB20; }
+.insight-warning     { border-left: 3px solid #E05A1A; background: #FAEEDA20; }
+.insight-action      { border-left: 3px solid #3B6D11; background: #EAF3DE20; }
+.insight-trend       { border-left: 3px solid #532AB7; background: #EEEDFE20; }
+
+/* File drop zone */
+.drop-zone {
+  border: 2px dashed #d1d5db;
+  transition: border-color 0.2s, background 0.2s;
+}
+.drop-zone:hover, .drop-zone.drag-over {
+  border-color: #185FA5;
+  background: #E6F1FB40;
+}
+
+/* Trend indicators */
+.trend-up   { color: #3B6D11; }
+.trend-down { color: #A32D2D; }
+.trend-flat { color: #888780; }
