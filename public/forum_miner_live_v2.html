@@ -281,7 +281,7 @@ let _threads=[], _clusters=[], _briefs=[], _pains=[];
 async function googleSearch(query, siteFilter){
   let q = query;
   if(siteFilter && siteFilter !== 'all') q += ` site:${siteFilter}`;
-  const url = `https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${CX}&q=${encodeURIComponent(q)}&num=10`;
+  const url = `/api/search?q=${encodeURIComponent(q)}`;
   try{
     const res = await fetch(url);
     const data = await res.json();
