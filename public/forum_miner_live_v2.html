@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Forum Intelligence Miner — Testbook SEO</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f2;--surface:#fff;--border:#e8e6df;--border2:#d4d1c7;
+  --text:#1a1916;--muted:#6b6860;--faint:#a09d96;
+  --orange:#e85d20;--orange-light:#fdf0ea;--orange-dark:#c44d18;
+  --green-bg:#edf6e8;--green-text:#2d6b1f;
+  --amber-bg:#fdf3e0;--amber-text:#7a4f0a;
+  --blue-bg:#e8f1fb;--blue-text:#1a4f8a;
+  --red-bg:#fdecea;--red-text:#9b2b2b;
+  --purple-bg:#f0effe;--purple-text:#3d2fa0;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh}
+.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.main{padding:28px 32px;overflow-y:auto;max-height:100vh}
+
+/* Sidebar */
+.sb-header{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.sb-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.sb-mark{width:30px;height:30px;background:var(--orange);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;font-family:'DM Mono',monospace}
+.sb-name{font-size:14px;font-weight:600}
+.sb-sub{font-size:11px;color:var(--faint)}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:4px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+
+.api-box{padding:12px 14px;border-bottom:1px solid var(--border);background:var(--bg)}
+.api-lbl{font-size:10px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px}
+.api-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;font-size:12px}
+.api-val{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.connected{font-size:10px;padding:2px 6px;border-radius:3px;background:var(--green-bg);color:var(--green-text);font-weight:600}
+.sources-row{display:flex;gap:5px;margin-top:8px;flex-wrap:wrap}
+.src-chip{font-size:10px;padding:2px 8px;border-radius:3px;font-weight:600}
+.src-reddit{background:var(--red-bg);color:var(--red-text)}
+.src-quora{background:var(--blue-bg);color:var(--blue-text)}
+.src-forum{background:var(--purple-bg);color:var(--purple-text)}
+
+.sb-section{padding:10px 14px 4px;font-size:10px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:0.07em}
+.sb-item{display:flex;align-items:center;gap:8px;padding:8px 14px;cursor:pointer;border-left:2px solid transparent;transition:all 0.1s}
+.sb-item:hover{background:var(--bg)}
+.sb-item.active{background:var(--orange-light);border-left-color:var(--orange)}
+.sb-item.active .sb-item-title{color:var(--orange);font-weight:500}
+.sb-icon{width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'DM Mono',monospace;flex-shrink:0}
+.sb-item-title{font-size:12px;line-height:1.3}
+.sb-item-sub{font-size:10px;color:var(--faint)}
+
+/* Search bar */
+.search-bar{display:flex;gap:8px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:8px 10px;align-items:center}
+.search-bar input{flex:1;border:none;background:transparent;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif}
+.search-bar input:focus{outline:none}
+.src-filters{display:flex;gap:4px}
+.sf{font-size:11px;padding:4px 9px;border:1px solid var(--border);border-radius:5px;cursor:pointer;background:var(--surface);color:var(--muted);font-family:'DM Sans',sans-serif;transition:all 0.1s;user-select:none}
+.sf.on{background:var(--text);border-color:var(--text);color:#fff}
+.mine-btn{padding:8px 20px;background:var(--orange);border:none;border-radius:7px;color:#fff;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:background 0.15s}
+.mine-btn:hover{background:var(--orange-dark)}
+.mine-btn:disabled{opacity:0.5;cursor:not-allowed}
+
+/* Metrics */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.mcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+.mval{font-size:24px;font-weight:600;line-height:1}
+.mlbl{font-size:11px;color:var(--muted);margin-top:3px}
+.mchip{display:inline-block;font-size:10px;padding:2px 7px;border-radius:3px;font-weight:500;margin-top:6px}
+
+/* Tabs */
+.tabs{display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px;margin-bottom:16px}
+.tab{padding:7px 14px;font-size:12px;color:var(--muted);cursor:pointer;border-radius:6px;border:none;background:transparent;font-family:'DM Sans',sans-serif;transition:all 0.1s}
+.tab.active{background:var(--surface);color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+
+/* Results */
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.toolbar{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg);flex-wrap:wrap}
+.fpill{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--muted);cursor:pointer;background:var(--surface);font-family:'DM Sans',sans-serif}
+.fpill.active{background:var(--orange);border-color:var(--orange);color:#fff}
+.rcount{font-size:11px;color:var(--faint);margin-left:auto}
+
+.trow{display:flex;gap:12px;padding:13px 15px;border-bottom:1px solid var(--border);align-items:flex-start;transition:background 0.1s}
+.trow:last-child{border-bottom:none}
+.trow:hover{background:var(--bg)}
+.sbadge{font-size:10px;font-weight:600;padding:3px 7px;border-radius:4px;white-space:nowrap;font-family:'DM Mono',monospace;margin-top:1px}
+.s-reddit{background:var(--red-bg);color:var(--red-text)}
+.s-quora{background:var(--blue-bg);color:var(--blue-text)}
+.s-forum{background:var(--purple-bg);color:var(--purple-text)}
+.s-sscadda{background:var(--amber-bg);color:var(--amber-text)}
+.s-pagalguy{background:var(--green-bg);color:var(--green-text)}
+.tbody{flex:1;min-width:0}
+.ttitle{font-size:13px;font-weight:500;line-height:1.4;margin-bottom:4px}
+.ttitle a{color:var(--text);text-decoration:none}
+.ttitle a:hover{color:var(--orange);text-decoration:underline}
+.tmeta{display:flex;gap:10px;font-size:11px;color:var(--faint);flex-wrap:wrap;margin-bottom:5px}
+.tkws{display:flex;gap:4px;flex-wrap:wrap}
+.ichip{font-size:10px;padding:2px 7px;border-radius:3px;font-weight:500}
+.kwchip{font-size:10px;padding:2px 7px;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--muted)}
+.tscore{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:50px;flex-shrink:0}
+.snum{font-size:20px;font-weight:600}
+.slbl{font-size:9px;color:var(--faint);text-transform:uppercase;letter-spacing:0.04em}
+
+/* KW table */
+.kwblock{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px}
+.kwblock-hdr{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;padding:8px 14px;font-size:10px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--border);background:var(--bg)}
+td{padding:8px 14px;border-bottom:1px solid var(--border);color:var(--text)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--bg)}
+
+/* Briefs */
+.brief-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+.btitle{font-size:13px;font-weight:500;margin-bottom:4px;line-height:1.4}
+.bkw{font-size:11px;color:var(--muted);margin-bottom:8px;font-family:'DM Mono',monospace}
+.bchips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.bfoot{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--faint)}
+.bbtn{font-size:10px;padding:3px 9px;border:1px solid var(--border2);border-radius:4px;background:var(--bg);color:var(--muted);cursor:pointer}
+.bbtn:hover{background:var(--border)}
+
+/* Pain */
+.prow{display:flex;gap:12px;padding:13px 15px;border-bottom:1px solid var(--border);align-items:flex-start}
+.prow:last-child{border-bottom:none}
+.pbody{flex:1}
+.ptitle{font-size:13px;font-weight:500;margin-bottom:3px}
+.pmeta{font-size:11px;color:var(--faint);margin-bottom:4px}
+.popp{font-size:12px;color:var(--muted)}
+
+/* States */
+.state{padding:3rem 2rem;text-align:center}
+.state-title{font-size:15px;font-weight:500;margin-bottom:6px}
+.state-sub{font-size:13px;color:var(--muted);line-height:1.6;max-width:400px;margin:0 auto}
+.bar{width:220px;height:3px;background:var(--border);border-radius:2px;margin:16px auto 0;overflow:hidden}
+.bar-fill{height:100%;background:var(--orange);border-radius:2px;animation:barf 1.8s ease-in-out infinite}
+@keyframes barf{0%{width:0;margin-left:0}50%{width:60%;margin-left:20%}100%{width:0;margin-left:100%}}
+
+.notice{background:var(--amber-bg);border:1px solid #f0d090;border-radius:8px;padding:12px 14px;font-size:12px;color:var(--amber-text);margin-bottom:16px;line-height:1.6}
+.notice a{color:var(--orange)}
+.err{background:var(--red-bg);border:1px solid #f0b0b0;border-radius:8px;padding:10px 14px;font-size:12px;color:var(--red-text);margin-bottom:12px}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="sidebar">
+  <div class="sb-header">
+    <div class="sb-logo">
+      <div class="sb-mark">T</div>
+      <div>
+        <div class="sb-name">Forum Miner <span class="live-dot"></span></div>
+        <div class="sb-sub">Testbook SEO Intelligence</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="api-box">
+    <div class="api-lbl">API status</div>
+    <div class="api-row">
+      <span style="font-size:12px">Google Search API</span>
+      <span class="connected">connected</span>
+    </div>
+    <div class="api-row">
+      <span class="api-val">AIzaSyDwKifH...AeQ4</span>
+    </div>
+    <div class="api-row" style="margin-top:4px">
+      <span style="font-size:12px">Search Engine</span>
+      <span class="connected">connected</span>
+    </div>
+    <div class="api-row">
+      <span class="api-val">c433d6136c67f437d</span>
+    </div>
+    <div class="sources-row">
+      <span class="src-chip src-reddit">reddit.com</span>
+      <span class="src-chip src-quora">quora.com</span>
+      <span class="src-chip src-forum">sscadda.com</span>
+      <span class="src-chip src-forum">pagalguy.com</span>
+    </div>
+  </div>
+
+  <div class="sb-section">Signal modules</div>
+  <div id="sb-list"></div>
+</div>
+
+<div class="main" id="main"></div>
+</div>
+
+<script>
+const API_KEY = 'AIzaSyDwKifHmwQfQfnMNaB9t_3_n5hm3cmAeQ4';
+const CX = 'c433d6136c67f437d';
+
+const MODULES = [
+  {id:"vernacular",icon:"HI",ib:"#e8f1fb",ic:"#1a4f8a",title:"Vernacular SEO",sub:"Hindi/regional threads",
+   queries:["{q} Hindi preparation","{q} taiyari kaise kare","testbook Hindi medium","{q} Telugu preparation"],
+   sites:["reddit.com","quora.com"],
+   intentKeys:{taiyari:"informational",hindi:"informational",kaise:"informational",telugu:"informational",marathi:"informational"},
+   brief:k=>`${k} — complete Hindi & regional language guide`},
+
+  {id:"competitor",icon:"CG",ib:"#fdecea",ic:"#9b2b2b",title:"Competitor gap",sub:"Complaint threads → advantage pages",
+   queries:["adda247 problems {q}","gradeup vs testbook {q}","oliveboard alternative {q}","unacademy too expensive {q}","switched from adda247 to testbook"],
+   sites:["reddit.com","quora.com"],
+   intentKeys:{vs:"comparison",problem:"informational",alternative:"transactional",switched:"transactional",better:"comparison",worse:"informational"},
+   brief:k=>`Testbook vs competitor — ${k} honest comparison 2026`},
+
+  {id:"trending",icon:"TR",ib:"#fdf3e0",ic:"#7a4f0a",title:"Trending exam radar",sub:"Post velocity → early pages",
+   queries:["{q} 2026 notification date","new exam pattern {q} 2026","{q} syllabus change 2026","when is {q} exam 2026"],
+   sites:["reddit.com","quora.com","sscadda.com"],
+   intentKeys:{"2026":"informational",notification:"informational",new:"informational",pattern:"informational",syllabus:"informational"},
+   brief:k=>`${k} 2026 — notification, syllabus and complete preparation guide`},
+
+  {id:"failure",icon:"FM",ib:"#fdecea",ic:"#9b2b2b",title:"Failure reason mining",sub:"'I failed because...' threads",
+   queries:["failed {q} reason why","why students fail {q}","common mistakes {q} exam","{q} weak areas how to improve"],
+   sites:["reddit.com","quora.com"],
+   intentKeys:{failed:"informational",mistake:"informational",weak:"informational",reason:"informational",improve:"informational"},
+   brief:k=>`Why students fail ${k} — and exactly how to fix it`},
+
+  {id:"salary",icon:"SC",ib:"#edf6e8",ic:"#2d6b1f",title:"Salary & career",sub:"Post-selection threads → career pages",
+   queries:["{q} salary in hand 2026","best post after {q}","life after {q} selection","government job {q} perks promotions"],
+   sites:["reddit.com","quora.com"],
+   intentKeys:{salary:"informational",post:"informational",life:"informational",career:"informational",perks:"informational"},
+   brief:k=>`${k} — complete salary, career and life guide 2026`},
+
+  {id:"schedule",icon:"SS",ib:"#f0effe",ic:"#3d2fa0",title:"Study schedule mining",sub:"Topper timetables → strategy pages",
+   queries:["{q} study plan working professional","{q} 90 day preparation plan","topper timetable {q}","how to prepare {q} 3 months"],
+   sites:["reddit.com","quora.com"],
+   intentKeys:{plan:"informational",timetable:"informational",schedule:"informational",months:"informational",topper:"informational"},
+   brief:k=>`${k} study plan — week by week timetable`},
+
+  {id:"resource",icon:"RC",ib:"#fdf3e0",ic:"#7a4f0a",title:"Resource comparison",sub:"Book vs app vs YouTube threads",
+   queries:["best books for {q}","testbook vs rs aggarwal {q}","online vs offline {q} preparation","youtube channel vs app {q}"],
+   sites:["reddit.com","quora.com","pagalguy.com"],
+   intentKeys:{book:"comparison",online:"comparison",best:"informational",vs:"comparison",youtube:"comparison"},
+   brief:k=>`Testbook vs ${k} — which is better for exam preparation?`},
+
+  {id:"pattern",icon:"EP",ib:"#fdecea",ic:"#9b2b2b",title:"Exam pattern changes",sub:"'New pattern' → urgent pages",
+   queries:["{q} new syllabus 2026","what changed in {q} pattern","new marking scheme {q}","{q} pattern change latest news"],
+   sites:["reddit.com","quora.com","sscadda.com"],
+   intentKeys:{new:"informational",changed:"informational",syllabus:"informational",pattern:"informational",marking:"informational"},
+   brief:k=>`${k} new pattern 2026 — complete breakdown of all changes`},
+
+  {id:"coaching",icon:"CS",ib:"#e8f1fb",ic:"#1a4f8a",title:"Coaching vs self-study",sub:"High conversion intent",
+   queries:["{q} without coaching self study","is coaching worth it {q}","quit coaching switched app {q}","self study vs coaching {q} clear"],
+   sites:["reddit.com","quora.com"],
+   intentKeys:{coaching:"comparison","without coaching":"informational",worth:"informational",quit:"transactional",self:"informational"},
+   brief:k=>`${k} without coaching — complete self-study guide 2026`},
+
+  {id:"location",icon:"LO",ib:"#edf6e8",ic:"#2d6b1f",title:"Location & posting",sub:"State cadre → geo pages",
+   queries:["{q} state preference guide","home state posting {q}","{q} preparation Maharashtra","{q} preparation UP Bihar"],
+   sites:["reddit.com","quora.com"],
+   intentKeys:{state:"informational",posting:"informational",cadre:"informational",preference:"informational",maharashtra:"informational"},
+   brief:k=>`${k} state preference & posting guide — everything you need to know`},
+
+  {id:"cutoff",icon:"CO",ib:"#fdecea",ic:"#9b2b2b",title:"Cut-off analysis",sub:"Post-exam → cutoff pages",
+   queries:["{q} expected cutoff 2025 2026","{q} cutoff trend analysis","safe score {q} tier 1","category wise cutoff {q} OBC UR"],
+   sites:["reddit.com","quora.com","sscadda.com"],
+   intentKeys:{cutoff:"informational","safe score":"informational",expected:"informational",category:"informational",trend:"informational"},
+   brief:k=>`${k} expected cutoff 2026 — category-wise analysis and trend`},
+
+  {id:"motivation",icon:"MB",ib:"#fdf3e0",ic:"#7a4f0a",title:"Motivation & burnout",sub:"'I want to quit' → brand pages",
+   queries:["is {q} worth it 2026","failed {q} multiple times what to do","give up {q} preparation","how to stay motivated {q}"],
+   sites:["reddit.com","quora.com"],
+   intentKeys:{"worth it":"informational",failed:"informational","give up":"informational",motivated:"informational",burnout:"informational"},
+   brief:k=>`Is ${k} still worth it in 2026? — an honest, complete answer`},
+];
+
+const IC = {informational:"background:#e8f1fb;color:#1a4f8a",transactional:"background:#edf6e8;color:#2d6b1f",comparison:"background:#f0effe;color:#3d2fa0",navigational:"background:#fdf3e0;color:#7a4f0a"};
+const GC = {High:"background:#fdecea;color:#9b2b2b",Medium:"background:#fdf3e0;color:#7a4f0a",Low:"background:#edf6e8;color:#2d6b1f"};
+
+let activeModule = MODULES[0];
+let activeTab = 'threads';
+let intentFilter = 'all';
+let srcFilter = 'all';
+let _threads=[], _clusters=[], _briefs=[], _pains=[];
+
+/* ── GOOGLE CUSTOM SEARCH ── */
+async function googleSearch(query, siteFilter){
+  let q = query;
+  if(siteFilter && siteFilter !== 'all') q += ` site:${siteFilter}`;
+  const url = `https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${CX}&q=${encodeURIComponent(q)}&num=10`;
+  try{
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+    return data.items || [];
+  }catch(e){
+    console.error('Search error:',e);
+    return [];
+  }
+}
+
+function detectSource(url){
+  if(!url) return 'forum';
+  if(url.includes('reddit.com')) return 'reddit';
+  if(url.includes('quora.com')) return 'quora';
+  if(url.includes('sscadda.com')) return 'sscadda';
+  if(url.includes('pagalguy.com')) return 'pagalguy';
+  return 'forum';
+}
+
+function detectIntent(text, intentKeys){
+  const t = (text||'').toLowerCase();
+  for(const [key, intent] of Object.entries(intentKeys)){
+    if(t.includes(key)) return intent;
+  }
+  if(t.includes('vs ')||t.includes('better than')||t.includes('compare')) return 'comparison';
+  if(t.includes('how to')||t.includes('what is')||t.includes('why')) return 'informational';
+  if(t.includes('buy')||t.includes('subscribe')||t.includes('join')||t.includes('download')) return 'transactional';
+  return 'informational';
+}
+
+function extractKeywords(title, snippet, baseQuery){
+  const text = (title+' '+(snippet||'')).toLowerCase();
+  const kws = new Set();
+  kws.add(baseQuery.toLowerCase().trim());
+  const patterns = [
+    /(?:best|good|worst|top)\s+\w+(?:\s+\w+){0,3}/g,
+    /\w+\s+(?:vs|versus)\s+\w+(?:\s+\w+)?/g,
+    /(?:how to|how do i|should i|is it worth)\s+\w+(?:\s+\w+){0,4}/g,
+    /(?:salary|cutoff|syllabus|strategy|plan|timetable|coaching|pattern)\s*(?:\w+\s*){0,2}/g,
+  ];
+  patterns.forEach(p=>{
+    const m = text.match(p)||[];
+    m.slice(0,2).forEach(x=>{
+      const kw = x.trim().replace(/\s+/g,' ');
+      if(kw.length>4 && kw.length<60) kws.add(kw);
+    });
+  });
+  return [...kws].slice(0,4);
+}
+
+function calcScore(item){
+  const title = (item.title||'').toLowerCase();
+  const snippet = (item.snippet||'').toLowerCase();
+  let score = 55;
+  const engagementWords = ['comments','upvotes','answers','views','votes','replied'];
+  engagementWords.forEach(w=>{ if(snippet.includes(w)) score+=5; });
+  if(title.includes('?')) score += 8;
+  if(snippet.length > 150) score += 5;
+  const highIntentWords = ['vs','comparison','best','alternative','worth','failed','salary','cutoff'];
+  highIntentWords.forEach(w=>{ if(title.includes(w)) score+=4; });
+  return Math.min(score, 98);
+}
+
+function buildClusters(threads){
+  const groups = {};
+  threads.forEach(t=>{
+    const intent = t.intent;
+    if(!groups[intent]) groups[intent]=[];
+    t.keywords.forEach(kw=>{
+      if(kw && kw.length>4){
+        groups[intent].push({kw, gap: t.score>75?'High':t.score>60?'Medium':'Low'});
+      }
+    });
+  });
+  return Object.entries(groups).filter(([,v])=>v.length).map(([intent, kws])=>({
+    name: intent.charAt(0).toUpperCase()+intent.slice(1)+' queries',
+    priority: (intent==='transactional'||intent==='comparison')?'high':'medium',
+    kws: dedupeKws(kws).slice(0,6)
+  }));
+}
+
+function dedupeKws(kws){
+  const seen = new Set();
+  return kws.filter(k=>{
+    const key = k.kw.substring(0,25);
+    if(seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildBriefs(threads, module){
+  const seen = new Set();
+  return threads.filter(t=>t.score>60).slice(0,6).map(t=>{
+    const kw = t.keywords[0]||t.query;
+    const title = module.brief(kw);
+    if(seen.has(title.substring(0,30))) return null;
+    seen.add(title.substring(0,30));
+    return {title, kw, intent:t.intent, url:t.url, comp:t.score>80?'Medium':'Low'};
+  }).filter(Boolean);
+}
+
+function buildPains(threads){
+  return threads.filter(t=>t.score>65).slice(0,5).map(t=>({
+    src: t.source,
+    pain: t.title.substring(0,110),
+    kw: t.keywords[0]||'',
+    url: t.url,
+    opp: `Create targeted SEO page for: "${t.keywords[0]||t.query}"`
+  }));
+}
+
+/* ── MINING ── */
+async function runMine(){
+  const query = document.getElementById('qinput').value.trim();
+  if(!query) return;
+  const m = activeModule;
+
+  showLoading(query);
+
+  const allItems = [];
+  const siteOn = {
+    reddit: document.getElementById('sf-reddit').classList.contains('on'),
+    quora: document.getElementById('sf-quora').classList.contains('on'),
+    forum: document.getElementById('sf-forum').classList.contains('on'),
+  };
+
+  for(const qTemplate of m.queries){
+    const q = qTemplate.replace('{q}', query);
+    const items = await googleSearch(q, null);
+    items.forEach(item=>{
+      const src = detectSource(item.link);
+      if(src==='reddit' && !siteOn.reddit) return;
+      if(src==='quora' && !siteOn.quora) return;
+      if((src==='sscadda'||src==='pagalguy'||src==='forum') && !siteOn.forum) return;
+      allItems.push({...item, _query: q, _src: src});
+    });
+  }
+
+  if(allItems.length===0){
+    showEmpty(query);
+    return;
+  }
+
+  // Deduplicate by URL
+  const seen = new Set();
+  const unique = allItems.filter(i=>{
+    if(seen.has(i.link)) return false;
+    seen.add(i.link);
+    return true;
+  });
+
+  // Process into thread objects
+  const threads = unique.map(item=>({
+    source: item._src,
+    title: item.title,
+    url: item.link,
+    displayUrl: item.displayLink,
+    snippet: item.snippet||'',
+    query: item._query,
+    intent: detectIntent(item.title+' '+item.snippet, m.intentKeys),
+    keywords: extractKeywords(item.title, item.snippet, query),
+    score: calcScore(item),
+  })).sort((a,b)=>b.score-a.score);
+
+  _threads = threads;
+  _clusters = buildClusters(threads);
+  _briefs = buildBriefs(threads, m);
+  _pains = buildPains(threads);
+
+  renderMain(query, threads);
+}
+
+/* ── RENDER ── */
+function showLoading(query){
+  document.getElementById('main').innerHTML=`
+    ${searchBarHTML(query)}
+    <div class="panel"><div class="state">
+      <div class="state-title">Mining live data for "${query}"</div>
+      <div class="state-sub">Searching Reddit · Quora · SSCAdda · Pagalguy via Google Custom Search API</div>
+      <div class="bar"><div class="bar-fill"></div></div>
+    </div></div>`;
+}
+
+function showEmpty(query){
+  document.getElementById('main').innerHTML=`
+    ${searchBarHTML(query)}
+    <div class="panel"><div class="state">
+      <div class="state-title">No results found for "${query}"</div>
+      <div class="state-sub">Try a shorter term like "SSC CGL" or "UPSC". Check if API quota is exceeded (100 free searches/day).</div>
+    </div></div>`;
+}
+
+function renderMain(query, threads){
+  document.getElementById('main').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div style="width:28px;height:28px;border-radius:6px;background:${activeModule.ib};color:${activeModule.ic};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'DM Mono',monospace">${activeModule.icon}</div>
+      <div>
+        <div style="font-size:18px;font-weight:600">${activeModule.title}</div>
+        <div style="font-size:12px;color:var(--muted)">Live results for: <strong>${query}</strong></div>
+      </div>
+      <span style="margin-left:auto;font-size:11px;padding:3px 9px;border-radius:4px;background:var(--green-bg);color:var(--green-text);font-weight:600"><span class="live-dot" style="width:6px;height:6px"></span>Live data</span>
+    </div>
+    ${searchBarHTML(query)}
+    <div class="metrics">
+      <div class="mcard"><div class="mval">${threads.length}</div><div class="mlbl">Threads found</div><span class="mchip" style="background:var(--green-bg);color:var(--green-text)">Real posts</span></div>
+      <div class="mcard"><div class="mval">${threads.filter(t=>t.source==='reddit').length}</div><div class="mlbl">From Reddit</div><span class="mchip" style="background:var(--red-bg);color:var(--red-text)">reddit.com</span></div>
+      <div class="mcard"><div class="mval">${threads.filter(t=>t.source==='quora').length}</div><div class="mlbl">From Quora</div><span class="mchip" style="background:var(--blue-bg);color:var(--blue-text)">quora.com</span></div>
+      <div class="mcard"><div class="mval">${_briefs.length}</div><div class="mlbl">Page briefs ready</div><span class="mchip" style="background:var(--red-bg);color:var(--red-text)">SEO gaps</span></div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(this,'threads')">Threads (${threads.length})</button>
+      <button class="tab" onclick="switchTab(this,'keywords')">Keywords (${_clusters.reduce((a,c)=>a+c.kws.length,0)})</button>
+      <button class="tab" onclick="switchTab(this,'briefs')">Page briefs (${_briefs.length})</button>
+      <button class="tab" onclick="switchTab(this,'pain')">Pain points (${_pains.length})</button>
+    </div>
+    <div id="tab-body"></div>`;
+
+  renderTab('threads');
+}
+
+function searchBarHTML(query){
+  return `<div class="search-bar">
+    <input type="text" id="qinput" value="${query||''}" placeholder="e.g. SSC CGL, UPSC, RRB NTPC, CUET..."/>
+    <div class="src-filters">
+      <span class="sf on" id="sf-reddit" onclick="this.classList.toggle('on')">Reddit</span>
+      <span class="sf on" id="sf-quora" onclick="this.classList.toggle('on')">Quora</span>
+      <span class="sf on" id="sf-forum" onclick="this.classList.toggle('on')">Forums</span>
+    </div>
+    <button class="mine-btn" onclick="runMine()">Mine live ↗</button>
+  </div>`;
+}
+
+function switchTab(el, tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  activeTab = tab;
+  renderTab(tab);
+}
+
+function renderTab(tab){
+  if(tab==='threads') renderThreadsTab();
+  else if(tab==='keywords') renderKeywordsTab();
+  else if(tab==='briefs') renderBriefsTab();
+  else if(tab==='pain') renderPainTab();
+}
+
+function filterIntent(pill, intent){
+  document.querySelectorAll('.fpill').forEach(p=>p.classList.remove('active'));
+  pill.classList.add('active');
+  intentFilter = intent;
+  renderThreadsTab();
+}
+
+function renderThreadsTab(){
+  let threads = intentFilter==='all' ? _threads : _threads.filter(t=>t.intent===intentFilter);
+  document.getElementById('tab-body').innerHTML=`
+    <div class="panel">
+      <div class="toolbar">
+        <span style="font-size:11px;color:var(--muted)">Intent:</span>
+        ${['all','informational','comparison','transactional'].map(i=>`<button class="fpill${intentFilter===i?' active':''}" onclick="filterIntent(this,'${i}')">${i}</button>`).join('')}
+        <span class="rcount">${threads.length} results</span>
+      </div>
+      ${threads.length ? threads.map(t=>`
+        <div class="trow">
+          <div><span class="sbadge s-${t.source}">${t.source}</span></div>
+          <div class="tbody">
+            <div class="ttitle"><a href="${t.url}" target="_blank" rel="noopener">${t.title}</a></div>
+            <div class="tmeta">
+              <span>${t.displayUrl}</span>
+              ${t.snippet ? `<span style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.snippet.substring(0,80)}...</span>` : ''}
+            </div>
+            <div class="tkws">
+              <span class="ichip" style="${IC[t.intent]||''}">${t.intent}</span>
+              ${t.keywords.map(k=>`<span class="kwchip">${k}</span>`).join('')}
+            </div>
+          </div>
+          <div class="tscore">
+            <div class="snum">${t.score}</div>
+            <div class="slbl">SEO score</div>
+          </div>
+        </div>`).join('') : '<div class="state"><div class="state-title">No results for this filter</div></div>'}
+    </div>`;
+}
+
+function renderKeywordsTab(){
+  if(!_clusters.length){
+    document.getElementById('tab-body').innerHTML='<div class="panel"><div class="state"><div class="state-title">No keyword clusters yet</div></div></div>';
+    return;
+  }
+  document.getElementById('tab-body').innerHTML = _clusters.map(c=>`
+    <div class="kwblock">
+      <div class="kwblock-hdr">
+        <span style="font-size:13px;font-weight:500">${c.name}</span>
+        <span class="mchip" style="${c.priority==='high'?'background:#fdecea;color:#9b2b2b':'background:#fdf3e0;color:#7a4f0a'}">${c.priority} priority</span>
+      </div>
+      <table>
+        <thead><tr><th>Keyword (from live posts)</th><th>Intent</th><th>Content gap</th></tr></thead>
+        <tbody>${c.kws.map(k=>`<tr>
+          <td style="font-family:'DM Mono',monospace">${k.kw}</td>
+          <td><span class="ichip" style="${IC[c.name.split(' ')[0].toLowerCase()]||IC.informational};font-size:10px;padding:2px 6px">${c.name.split(' ')[0].toLowerCase()}</span></td>
+          <td><span class="mchip" style="${GC[k.gap]||''}">${k.gap}</span></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`).join('');
+}
+
+function renderBriefsTab(){
+  if(!_briefs.length){
+    document.getElementById('tab-body').innerHTML='<div class="panel"><div class="state"><div class="state-title">No briefs generated</div><div class="state-sub">Mine a topic first</div></div></div>';
+    return;
+  }
+  document.getElementById('tab-body').innerHTML=`<div class="brief-grid">${_briefs.map(b=>`
+    <div class="bcard">
+      <div class="btitle">${b.title}</div>
+      <div class="bkw">${b.kw}</div>
+      <div class="bchips">
+        <span class="ichip" style="${IC[b.intent]||''};font-size:10px">${b.intent}</span>
+        <span class="mchip" style="${GC[b.comp]||''};font-size:10px">${b.comp} competition</span>
+      </div>
+      <div class="bfoot">
+        <a href="${b.url}" target="_blank" style="color:var(--orange);font-size:11px">Source ↗</a>
+        <button class="bbtn" onclick="copyBrief('${b.title.replace(/'/g,"\\'")}','${b.kw.replace(/'/g,"\\'")}')">Copy brief</button>
+      </div>
+    </div>`).join('')}</div>`;
+}
+
+function renderPainTab(){
+  if(!_pains.length){
+    document.getElementById('tab-body').innerHTML='<div class="panel"><div class="state"><div class="state-title">No pain points found</div></div></div>';
+    return;
+  }
+  document.getElementById('tab-body').innerHTML=`<div class="panel">${_pains.map(p=>`
+    <div class="prow">
+      <div><span class="sbadge s-${p.src}">${p.src}</span></div>
+      <div class="pbody">
+        <div class="ptitle">${p.pain}</div>
+        <div class="pmeta">Target keyword: <span style="font-family:'DM Mono',monospace">${p.kw}</span></div>
+        <div class="popp">Opportunity: ${p.opp}</div>
+      </div>
+      <a href="${p.url}" target="_blank" style="font-size:11px;color:var(--orange);white-space:nowrap;align-self:center">View post ↗</a>
+    </div>`).join('')}</div>`;
+}
+
+function copyBrief(title, kw){
+  const text = `SEO Page Brief\n\nPage Title: ${title}\nTarget Keyword: ${kw}\nData Source: Live Reddit + Quora via Google Custom Search\n\nWrite a comprehensive SEO-optimised page targeting this keyword, based on real student discussions found on Reddit and Quora.`;
+  navigator.clipboard.writeText(text).catch(()=>{}).then(()=>alert('Copied to clipboard!'));
+}
+
+/* ── SIDEBAR ── */
+function buildSidebar(){
+  const list = document.getElementById('sb-list');
+  MODULES.forEach(m=>{
+    const el = document.createElement('div');
+    el.className='sb-item'+(m.id===activeModule.id?' active':'');
+    el.id='sbm-'+m.id;
+    el.innerHTML=`<div class="sb-icon" style="background:${m.ib};color:${m.ic}">${m.icon}</div><div><div class="sb-item-title">${m.title}</div><div class="sb-item-sub">${m.sub}</div></div>`;
+    el.onclick=()=>{
+      activeModule=m;
+      document.querySelectorAll('.sb-item').forEach(x=>x.classList.remove('active'));
+      el.classList.add('active');
+      renderReady();
+    };
+    list.appendChild(el);
+  });
+}
+
+function renderReady(){
+  const m = activeModule;
+  document.getElementById('main').innerHTML=`
+    <div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div style="width:28px;height:28px;border-radius:6px;background:${m.ib};color:${m.ic};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:'DM Mono',monospace">${m.icon}</div>
+        <div style="font-size:18px;font-weight:600">${m.title}</div>
+      </div>
+      <div style="font-size:13px;color:var(--muted)">${m.sub}</div>
+    </div>
+    ${searchBarHTML('')}
+    <div class="notice">
+      <strong>This module will search:</strong> ${m.queries.map(q=>`<code style="background:rgba(0,0,0,0.06);padding:1px 5px;border-radius:3px">${q}</code>`).join(' · ')}<br><br>
+      Results come from <strong>reddit.com</strong> and <strong>quora.com</strong> in real time via your Google Custom Search API. Each result is scored, keywords extracted, and page briefs generated automatically.
+    </div>
+    <div class="panel"><div class="state">
+      <div class="state-title">Ready to mine</div>
+      <div class="state-sub">Enter any exam topic above — SSC CGL, UPSC, RRB NTPC, CUET, NDA, CLAT — and click Mine Live</div>
+    </div></div>`;
+}
+
+buildSidebar();
+renderReady();
+</script>
+</body>
+</html>
