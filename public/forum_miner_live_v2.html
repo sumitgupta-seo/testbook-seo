@@ -160,27 +160,17 @@ tr:hover td{background:var(--bg)}
   </div>
 
   <div class="api-box">
-    <div class="api-lbl">API status</div>
+    <div class="api-lbl">Data sources</div>
     <div class="api-row">
-      <span style="font-size:12px">SerpAPI</span>
-      <span class="connected">connected</span>
-    </div>
-    <div class="api-row">
-      <span class="api-val">ffda6305...23c7b</span>
-    </div>
-    <div class="api-row" style="margin-top:4px">
-      <span style="font-size:12px">Search Engine</span>
-      <span class="connected">connected</span>
-    </div>
-    <div class="api-row">
-      
+      <span style="font-size:12px">Live search</span>
+      <span class="connected">active</span>
     </div>
     <div class="sources-row">
       <span class="src-chip src-reddit">reddit.com</span>
       <span class="src-chip src-quora">quora.com</span>
-      
-      
     </div>
+    <div style="margin-top:10px;font-size:10px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Search history</div>
+    <div id="search-history" style="display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto"></div>
   </div>
 
   <div class="sb-section">Signal modules</div>
@@ -278,7 +268,7 @@ let srcFilter = 'all';
 let _threads=[], _clusters=[], _briefs=[], _pains=[];
 
 /* ── GOOGLE CUSTOM SEARCH ── */
-const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+const CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function getCached(key){
   try{
@@ -541,7 +531,10 @@ function renderMain(query, threads){
         <div style="font-size:18px;font-weight:600">${activeModule.title}</div>
         <div style="font-size:12px;color:var(--muted)">Live results for: <strong>${query}</strong></div>
       </div>
-      <span style="margin-left:auto;font-size:11px;padding:3px 9px;border-radius:4px;background:var(--green-bg);color:var(--green-text);font-weight:600"><span class="live-dot" style="width:6px;height:6px"></span>Live data</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:8px">
+        <span style="font-size:11px;padding:3px 9px;border-radius:4px;background:var(--green-bg);color:var(--green-text);font-weight:600"><span class="live-dot" style="width:6px;height:6px"></span>Live data</span>
+        <button onclick="exportCSV()" style="font-size:11px;padding:4px 12px;border:1px solid var(--border2);border-radius:5px;background:var(--surface);color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif">Export CSV ↓</button>
+      </span>
     </div>
     ${searchBarHTML(query)}
     <div class="metrics">
@@ -726,6 +719,27 @@ function renderReady(){
       <div class="state-title">Ready to mine</div>
       <div class="state-sub">Enter any exam topic above — SSC CGL, UPSC, RRB NTPC, CUET, NDA, CLAT — and click Mine Live</div>
     </div></div>`;
+}
+
+
+function exportCSV(){
+  if(!_threads.length){ alert('No results to export. Mine a topic first.'); return; }
+  const headers = ['Title','URL','Source','Intent','SEO Score','Keywords','Snippet'];
+  const rows = _threads.map(t=>[
+    '"'+((t.title||'').replace(/"/g,'""'))+'"',
+    '"'+(t.url||'')+'"',
+    t.source,
+    t.intent,
+    t.score,
+    '"'+((t.keywords||[]).join(', '))+'"',
+    '"'+((t.snippet||'').substring(0,100).replace(/"/g,'""'))+'"'
+  ]);
+  const csv = [headers, ...rows].map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'forum-miner-'+activeModule.id+'-'+Date.now()+'.csv';
+  a.click();
 }
 
 buildSidebar();
