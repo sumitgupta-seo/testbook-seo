@@ -191,8 +191,8 @@ tr:hover td{background:var(--bg)}
 </div>
 
 <script>
-const API_KEY = 'AIzaSyDwKifHmwQfQfnMNaB9t_3_n5hm3cmAeQ4';
-const CX = 'c433d6136c67f437d';
+
+
 
 const MODULES = [
   {id:"vernacular",icon:"HI",ib:"#e8f1fb",ic:"#1a4f8a",title:"Vernacular SEO",sub:"Hindi/regional threads",
@@ -279,13 +279,14 @@ let _threads=[], _clusters=[], _briefs=[], _pains=[];
 
 /* ── GOOGLE CUSTOM SEARCH ── */
 async function googleSearch(query, siteFilter){
-  let q = query;
-  if(siteFilter && siteFilter !== 'all') q += ` site:${siteFilter}`;
-  const url = `https://www.googleapis.com/customsearch/v1?key=${API_KEY}&cx=${CX}&q=${encodeURIComponent(q)}&num=10`;
+  // Always restrict to forum sources
+  const siteRestrict = 'site:reddit.com OR site:quora.com';
+  const q = `${query} ${siteRestrict}`;
+  const url = `/api/search?q=${encodeURIComponent(q)}`;
   try{
     const res = await fetch(url);
     const data = await res.json();
-    if(data.error) throw new Error(data.error.message);
+    if(data.error) throw new Error(data.error);
     return data.items || [];
   }catch(e){
     console.error('Search error:',e);
