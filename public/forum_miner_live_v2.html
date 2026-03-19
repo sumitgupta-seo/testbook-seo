@@ -169,8 +169,7 @@ tr:hover td{background:var(--bg)}
       <span class="src-chip src-reddit">reddit.com</span>
       <span class="src-chip src-quora">quora.com</span>
     </div>
-    <div style="margin-top:10px;font-size:10px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">Search history</div>
-    <div id="search-history" style="display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto"></div>
+
   </div>
 
   <div class="sb-section">Signal modules</div>
@@ -268,7 +267,7 @@ let srcFilter = 'all';
 let _threads=[], _clusters=[], _briefs=[], _pains=[];
 
 /* ── GOOGLE CUSTOM SEARCH ── */
-const CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 days
+const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function getCached(key){
   try{
@@ -283,35 +282,7 @@ function getCached(key){
 function setCache(key, data){
   try{
     localStorage.setItem('fm_'+key, JSON.stringify({data, ts:Date.now()}));
-    saveHistory(key);
   }catch(e){}
-}
-
-function saveHistory(query){
-  try{
-    let hist = JSON.parse(localStorage.getItem('fm_history')||'[]');
-    hist = [query, ...hist.filter(h=>h!==query)].slice(0,10);
-    localStorage.setItem('fm_history', JSON.stringify(hist));
-    renderHistory();
-  }catch(e){}
-}
-
-function renderHistory(){
-  const el = document.getElementById('search-history');
-  if(!el) return;
-  try{
-    const hist = JSON.parse(localStorage.getItem('fm_history')||'[]');
-    el.innerHTML = hist.map(q=>`
-      <div onclick="loadFromHistory('${q.replace(/'/g,"\\'")}')
-" style="font-size:11px;padding:3px 8px;background:var(--bg);border-radius:4px;cursor:pointer;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${q}">
-        ↩ ${q}
-      </div>`).join('');
-  }catch(e){}
-}
-
-function loadFromHistory(query){
-  document.getElementById('qinput').value = query;
-  runMine();
 }
 
 async function googleSearch(query, siteFilter){
@@ -744,7 +715,6 @@ function exportCSV(){
 
 buildSidebar();
 renderReady();
-renderHistory();
 </script>
 </body>
 </html>
