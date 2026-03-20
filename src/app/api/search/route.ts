@@ -32,21 +32,34 @@ async function searchReddit(query: string): Promise<object[]> {
   const results: object[] = [];
   const seen = new Set<string>();
 
+  // Extract base exam term (first 2-3 words) for broader search
+  const baseQuery = query.split(' ').slice(0,3).join(' ');
+
   // Search across multiple subreddits in parallel
   const searches = [
-    // Global Reddit search - newest first
+    // Global Reddit - newest
     fetch(
-      `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=new&limit=25&t=year`,
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=new&limit=25&t=year`,
       { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
     ),
-    // Top posts this year
+    // Global Reddit - top
     fetch(
-      `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=top&limit=25&t=year`,
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=top&limit=25&t=year`,
       { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
     ),
-    // Relevant subreddit search
+    // Global Reddit - hot
     fetch(
-      `https://www.reddit.com/r/${REDDIT_SUBS.slice(0,5).join('+')}/search.json?q=${encodeURIComponent(query)}&sort=new&limit=25&restrict_sr=1&t=year`,
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=relevance&limit=25&t=month`,
+      { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
+    ),
+    // Subreddit search - newest
+    fetch(
+      `https://www.reddit.com/r/${REDDIT_SUBS.slice(0,6).join('+')}/search.json?q=${encodeURIComponent(baseQuery)}&sort=new&limit=25&restrict_sr=1&t=year`,
+      { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
+    ),
+    // Subreddit search - top
+    fetch(
+      `https://www.reddit.com/r/${REDDIT_SUBS.slice(0,6).join('+')}/search.json?q=${encodeURIComponent(baseQuery)}&sort=top&limit=25&restrict_sr=1&t=year`,
       { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
     ),
   ];
@@ -82,21 +95,44 @@ async function searchReddit(query: string): Promise<object[]> {
 
 async function searchQuora(query: string): Promise<object[]> {
   try {
-    // Last 6 months for freshness
-    const url = `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(query + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:m6`;
-    const res = await fetch(url);
-    const data = await res.json();
-    return (data.organic_results || []).map((r: SerpResult) => ({
-      source: 'quora',
-      title: r.title.replace(' - Quora', '').replace(' | Quora', ''),
-      url: r.link,
-      displayLink: 'quora.com',
-      snippet: r.snippet || '',
-      upvotes: 0,
-      comments: 0,
-      created_utc: 0,
-      daysAgo: null,
-    }));
+    // Use short base query for better Quora results, last 2 years
+    const baseQuery = query.split(' ').slice(0, 3).join(' ');
+    
+    // Run 2 Quora searches in parallel - recent + all time top
+    const [res1, res2] = await Promise.allSettled([
+      fetch(
+        `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:y`,
+        {}
+      ),
+      fetch(
+        `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en`,
+        {}
+      ),
+    ]);
+
+    const results: object[] = [];
+    const seen = new Set<string>();
+
+    for (const res of [res1, res2]) {
+      if (res.status !== 'fulfilled') continue;
+      const data = await res.value.json();
+      for (const r of (data.organic_results || []) as SerpResult[]) {
+        if (seen.has(r.link)) continue;
+        seen.add(r.link);
+        results.push({
+          source: 'quora',
+          title: r.title.replace(/ - Quora$/, '').replace(/ \| Quora$/, ''),
+          url: r.link,
+          displayLink: 'quora.com',
+          snippet: r.snippet || '',
+          upvotes: 0,
+          comments: 0,
+          created_utc: 0,
+          daysAgo: null,
+        });
+      }
+    }
+    return results;
   } catch(e) {
     return [];
   }
