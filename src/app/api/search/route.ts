@@ -9,6 +9,13 @@ interface SerpResult {
 
 const SERP_KEY = 'ffda63053015f623666ad2e88cbba58825e2b01a119a764bfc3f84b46ee23c7b';
 
+// Generic Quora pages that appear for every Indian exam query - block them
+const BLOCKED_TITLE_PATTERNS = [
+  'testbook', 'gradeup', 'adda247', 'unacademy app',
+  'best top 5 app', 'best website for', 'best app for all',
+  'is testbook enough', 'bank pariksha ki taiyari',
+];
+
 function cleanQuery(query: string): string {
   return query.replace(/site:\S+/g, '').replace(/\bOR\b/g, '').trim().split(' ').slice(0, 3).join(' ');
 }
@@ -24,40 +31,37 @@ function extractCommentCount(snippet: string): number {
 }
 
 function detectDaysAgo(snippet: string): number {
-  // Returns days ago — always returns a number, defaults to 999 (old/unknown)
   const s = snippet.toLowerCase();
-  const hoursMatch = s.match(/(\d+)\s*hours?\s*ago/);
-  if (hoursMatch) return 0;
-  const daysMatch = s.match(/(\d+)\s*days?\s*ago/);
-  if (daysMatch) return parseInt(daysMatch[1]);
-  const weeksMatch = s.match(/(\d+)\s*weeks?\s*ago/);
-  if (weeksMatch) return parseInt(weeksMatch[1]) * 7;
-  const monthsMatch = s.match(/(\d+)\s*months?\s*ago/);
-  if (monthsMatch) return parseInt(monthsMatch[1]) * 30;
-  const yearsMatch = s.match(/(\d+)\s*years?\s*ago/);
-  if (yearsMatch) return parseInt(yearsMatch[1]) * 365;
+  if (s.match(/\d+\s*hours?\s*ago/)) return 1;
+  const d = s.match(/(\d+)\s*days?\s*ago/);   if (d) return parseInt(d[1]);
+  const w = s.match(/(\d+)\s*weeks?\s*ago/);  if (w) return parseInt(w[1]) * 7;
+  const m = s.match(/(\d+)\s*months?\s*ago/); if (m) return parseInt(m[1]) * 30;
+  const y = s.match(/(\d+)\s*years?\s*ago/);  if (y) return parseInt(y[1]) * 365;
   if (s.includes('year ago')) return 365;
-  return 999; // unknown date — treat as old
+  return 999;
 }
 
-// STRICT: title must contain ALL meaningful query words (2+ words required)
-function isTitleRelevant(title: string, query: string): boolean {
-  const stopWords = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'for', 'and', 'or', 'to', 'in', 'of', 'it', 'do', 'how', 'what', 'why', 'when', 'which']);
-  const queryWords = query.toLowerCase().split(' ').filter(w => w.length > 2 && !stopWords.has(w));
+function isRelevant(title: string, query: string): boolean {
   const titleLower = title.toLowerCase();
   
-  if (queryWords.length === 0) return false;
-  if (queryWords.length === 1) return titleLower.includes(queryWords[0]);
+  // Block generic pages that appear for every query
+  if (BLOCKED_TITLE_PATTERNS.some(p => titleLower.includes(p))) return false;
+
+  const stopWords = new Set(['the','a','an','is','are','was','for','and','or','to','in','of','it','do','how','what','why','when','which','kya','hai','ke','ka','ki','liye']);
+  const queryWords = query.toLowerCase().split(' ').filter(w => w.length > 2 && !stopWords.has(w));
   
-  // For multi-word queries: title must contain at least 2 query words
+  if (queryWords.length === 0) return false;
+  
+  // Title must contain at least 1 query word for single word queries
+  // Title must contain at least 2 query words for multi-word queries  
   const matchCount = queryWords.filter(w => titleLower.includes(w)).length;
-  return matchCount >= Math.min(2, queryWords.length);
+  const required = queryWords.length === 1 ? 1 : 2;
+  return matchCount >= required;
 }
 
 function calcSEOScore(item: {
   source: string;
   title: string;
-  snippet: string;
   daysAgo: number;
   comments: number;
   answers: number;
@@ -65,7 +69,7 @@ function calcSEOScore(item: {
   let score = 40;
   const t = item.title.toLowerCase();
 
-  // Engagement signals
+  // Engagement
   if (item.source === 'quora') {
     if (item.answers >= 10)     score += 30;
     else if (item.answers >= 5) score += 20;
@@ -78,16 +82,15 @@ function calcSEOScore(item: {
     else if (item.comments >= 5)  score += 6;
   }
 
-  // Recency bonus
-  
-    if (item.daysAgo <= 7)        score += 20;
-    else if (item.daysAgo <= 30)  score += 12;
-    else if (item.daysAgo <= 90)  score += 6;
-    else if (item.daysAgo <= 365) score += 2;
+  // Recency
+  if (item.daysAgo <= 7)        score += 20;
+  else if (item.daysAgo <= 30)  score += 12;
+  else if (item.daysAgo <= 90)  score += 6;
+  else if (item.daysAgo <= 365) score += 2;
 
-  // Title quality
+  // Title intent
   if (t.includes('?')) score += 8;
-  ['salary', 'cutoff', 'worth', 'failed', 'vs', 'strategy', 'how to', 'should i', 'without coaching', 'best', 'preparation', 'score', 'exam', 'syllabus', 'pattern'].forEach(w => {
+  ['salary','cutoff','worth','failed','vs','strategy','how to','should i','without coaching','best','preparation','syllabus','pattern','score'].forEach(w => {
     if (t.includes(w)) score += 4;
   });
 
@@ -100,74 +103,38 @@ export async function GET(request: NextRequest) {
 
   const baseQuery = cleanQuery(query);
 
-  // 2 SerpAPI calls — Reddit (last 1 year) + Quora (all time)
+  // 2 SerpAPI calls — Reddit last 1 year + Quora last 2 years
   const [redditRes, quoraRes] = await Promise.allSettled([
     fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:reddit.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:y`),
-    fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en`),
+    fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:y2`),
   ]);
 
   const results: Array<{
-    source: string;
-    title: string;
-    url: string;
-    displayLink: string;
-    snippet: string;
-    comments: number;
-    answers: number;
-    daysAgo: number;
-    seoScore: number;
+    source: string; title: string; url: string; displayLink: string;
+    snippet: string; comments: number; answers: number; daysAgo: number; seoScore: number;
   }> = [];
 
   const seen = new Set<string>();
 
-  // Process Reddit
-  if (redditRes.status === 'fulfilled') {
+  for (const [res, source] of [[redditRes, 'reddit'], [quoraRes, 'quora']] as const) {
+    if (res.status !== 'fulfilled') continue;
     try {
-      const data = await redditRes.value.json();
+      const data = await res.value.json();
       for (const r of (data.organic_results || []) as SerpResult[]) {
         if (seen.has(r.link)) continue;
-        // STRICT title relevance check
-        if (!isTitleRelevant(r.title, baseQuery)) continue;
+        if (!isRelevant(r.title, baseQuery)) continue;
         seen.add(r.link);
         const snippet = r.snippet || '';
         const daysAgo = detectDaysAgo(snippet);
-        const comments = extractCommentCount(snippet);
+        const comments = source === 'reddit' ? extractCommentCount(snippet) : 0;
+        const answers = source === 'quora' ? extractAnswerCount(snippet) : 0;
         const item = {
-          source: 'reddit',
-          title: r.title,
+          source,
+          title: source === 'quora' ? r.title.replace(/ - Quora$/, '').replace(/ \| Quora$/, '') : r.title,
           url: r.link,
-          displayLink: r.displayed_link || 'reddit.com',
+          displayLink: source === 'reddit' ? (r.displayed_link || 'reddit.com') : 'quora.com',
           snippet,
           comments,
-          answers: 0,
-          daysAgo,
-          seoScore: 0,
-        };
-        item.seoScore = calcSEOScore(item);
-        results.push(item);
-      }
-    } catch (e) {}
-  }
-
-  // Process Quora
-  if (quoraRes.status === 'fulfilled') {
-    try {
-      const data = await quoraRes.value.json();
-      for (const r of (data.organic_results || []) as SerpResult[]) {
-        if (seen.has(r.link)) continue;
-        // STRICT title relevance check
-        if (!isTitleRelevant(r.title, baseQuery)) continue;
-        seen.add(r.link);
-        const snippet = r.snippet || '';
-        const answers = extractAnswerCount(snippet);
-        const daysAgo = detectDaysAgo(snippet);
-        const item = {
-          source: 'quora',
-          title: r.title.replace(/ - Quora$/, '').replace(/ \| Quora$/, ''),
-          url: r.link,
-          displayLink: 'quora.com',
-          snippet,
-          comments: 0,
           answers,
           daysAgo,
           seoScore: 0,
@@ -175,24 +142,14 @@ export async function GET(request: NextRequest) {
         item.seoScore = calcSEOScore(item);
         results.push(item);
       }
-    } catch (e) {}
+    } catch (e) { continue; }
   }
 
-  // Sort by recency first, then SEO score
-  // Items with known daysAgo come first, sorted newest to oldest
-  // Items with unknown date sorted by SEO score after
+  // Sort: newest first, then by SEO score for same age
   results.sort((a, b) => {
-    const aHasDate = true;
-    const bHasDate = true;
-
-    if (aHasDate && bHasDate) return a.daysAgo! - b.daysAgo!; // newer first
-    if (aHasDate && !bHasDate) return -1; // dated content first
-    if (!aHasDate && bHasDate) return 1;
-    return b.seoScore - a.seoScore; // both undated: sort by score
+    if (a.daysAgo !== b.daysAgo) return a.daysAgo - b.daysAgo;
+    return b.seoScore - a.seoScore;
   });
 
-  return NextResponse.json({
-    items: results,
-    _meta: { total: results.length }
-  });
+  return NextResponse.json({ items: results, _meta: { total: results.length } });
 }
