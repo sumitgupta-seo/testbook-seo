@@ -25,7 +25,9 @@ const SERP_KEY = 'ffda63053015f623666ad2e88cbba58825e2b01a119a764bfc3f84b46ee23c
 const REDDIT_SUBS = [
   'sscCGL', 'GovtExams', 'UPSC_Preparation', 'IndiaCareer',
   'ssc', 'SSCCGL', 'railwayexam', 'bankexams', 'Indian_Academia',
-  'GovtExamsMemes', 'CAT_MBA', 'CUET_Exam', 'DefenceExams'
+  'GovtExamsMemes', 'CAT_MBA', 'CUET_Exam', 'DefenceExams',
+  'india', 'AskIndia', 'IndiaSpeaks', 'developersIndia',
+  'IBO', 'NEET', 'JEEpreparation', 'boarding_school_india'
 ];
 
 async function searchReddit(query: string): Promise<object[]> {
@@ -33,33 +35,43 @@ async function searchReddit(query: string): Promise<object[]> {
   const seen = new Set<string>();
 
   // Extract base exam term (first 2-3 words) for broader search
-  const baseQuery = query.split(' ').slice(0,3).join(' ');
+  const baseQuery = query.split(' ').slice(0,2).join(' ');
 
   // Search across multiple subreddits in parallel
   const searches = [
     // Global Reddit - newest
     fetch(
-      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=new&limit=25&t=year`,
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=new&limit=50&t=year`,
       { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
     ),
     // Global Reddit - top
     fetch(
-      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=top&limit=25&t=year`,
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=top&limit=50&t=year`,
       { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
     ),
     // Global Reddit - hot
     fetch(
-      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=relevance&limit=25&t=month`,
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=relevance&limit=50&t=month`,
       { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
     ),
     // Subreddit search - newest
     fetch(
-      `https://www.reddit.com/r/${REDDIT_SUBS.slice(0,6).join('+')}/search.json?q=${encodeURIComponent(baseQuery)}&sort=new&limit=25&restrict_sr=1&t=year`,
+      `https://www.reddit.com/r/${REDDIT_SUBS.slice(0,6).join('+')}/search.json?q=${encodeURIComponent(baseQuery)}&sort=new&limit=50&restrict_sr=1&t=year`,
       { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
     ),
     // Subreddit search - top
     fetch(
-      `https://www.reddit.com/r/${REDDIT_SUBS.slice(0,6).join('+')}/search.json?q=${encodeURIComponent(baseQuery)}&sort=top&limit=25&restrict_sr=1&t=year`,
+      `https://www.reddit.com/r/${REDDIT_SUBS.slice(0,6).join('+')}/search.json?q=${encodeURIComponent(baseQuery)}&sort=top&limit=50&restrict_sr=1&t=year`,
+      { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
+    ),
+    // Last month - freshest posts
+    fetch(
+      `https://www.reddit.com/search.json?q=${encodeURIComponent(baseQuery)}&sort=new&limit=50&t=month`,
+      { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
+    ),
+    // Extended subreddits
+    fetch(
+      `https://www.reddit.com/r/${REDDIT_SUBS.slice(6,12).join('+')}/search.json?q=${encodeURIComponent(baseQuery)}&sort=new&limit=50&restrict_sr=1&t=year`,
       { headers: { 'User-Agent': 'TestbookSEO/1.0' } }
     ),
   ];
@@ -98,14 +110,14 @@ async function searchQuora(query: string): Promise<object[]> {
     // Use short base query for better Quora results, last 2 years
     const baseQuery = query.split(' ').slice(0, 3).join(' ');
     
-    // Run 2 Quora searches in parallel - recent + all time top
+    // Run 2 Quora searches - last 1 year only (no old content)
     const [res1, res2] = await Promise.allSettled([
       fetch(
         `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:y`,
         {}
       ),
       fetch(
-        `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en`,
+        `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' preparation site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:y`,
         {}
       ),
     ]);
