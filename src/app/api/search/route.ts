@@ -55,7 +55,7 @@ function isRelevant(title: string, query: string): boolean {
   // Title must contain at least 1 query word for single word queries
   // Title must contain at least 2 query words for multi-word queries  
   const matchCount = queryWords.filter(w => titleLower.includes(w)).length;
-  const required = queryWords.length === 1 ? 1 : 2;
+  const required = 1; // 1 word match enough - volume over precision
   return matchCount >= required;
 }
 
@@ -103,10 +103,15 @@ export async function GET(request: NextRequest) {
 
   const baseQuery = cleanQuery(query);
 
-  // 2 SerpAPI calls — Reddit last 1 year + Quora last 2 years
+  // Add current year to push fresher results to top
+  const currentYear = new Date().getFullYear();
+  const redditQuery = `${baseQuery} ${currentYear} site:reddit.com`;
+  const quoraQuery = `${baseQuery} site:quora.com`;
+
+  // 2 SerpAPI calls — Reddit with year signal + Quora all time
   const [redditRes, quoraRes] = await Promise.allSettled([
-    fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:reddit.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:y`),
-    fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:y2`),
+    fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(redditQuery)}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&sort=date`),
+    fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(quoraQuery)}&api_key=${SERP_KEY}&num=10&gl=in&hl=en`),
   ]);
 
   const results: Array<{
