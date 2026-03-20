@@ -352,14 +352,13 @@ function extractKeywords(title, snippet, baseQuery){
 }
 
 function calcScore(item){
+  // Use server-calculated score if available (includes recency + comments + upvotes)
+  if(item.seoScore) return item.seoScore;
+  // Fallback
   const title = (item.title||'').toLowerCase();
-  const snippet = (item.snippet||'').toLowerCase();
   let score = 55;
-  const engagementWords = ['comments','upvotes','answers','views','votes','replied'];
-  engagementWords.forEach(w=>{ if(snippet.includes(w)) score+=5; });
   if(title.includes('?')) score += 8;
-  if(snippet.length > 150) score += 5;
-  const highIntentWords = ['vs','comparison','best','alternative','worth','failed','salary','cutoff'];
+  const highIntentWords = ['vs','best','worth','failed','salary','cutoff'];
   highIntentWords.forEach(w=>{ if(title.includes(w)) score+=4; });
   return Math.min(score, 98);
 }
@@ -394,7 +393,7 @@ function dedupeKws(kws){
 
 function buildBriefs(threads, module){
   const seen = new Set();
-  return threads.filter(t=>t.score>60).slice(0,6).map(t=>{
+  return threads.filter(t=>t.score>50).slice(0,6).map(t=>{
     const kw = t.keywords[0]||t.query;
     const title = module.brief(kw);
     if(seen.has(title.substring(0,30))) return null;
@@ -404,7 +403,7 @@ function buildBriefs(threads, module){
 }
 
 function buildPains(threads){
-  return threads.filter(t=>t.score>65).slice(0,5).map(t=>({
+  return threads.filter(t=>t.score>55).slice(0,5).map(t=>({
     src: t.source,
     pain: t.title.substring(0,110),
     kw: t.keywords[0]||'',
@@ -464,7 +463,7 @@ async function runMine(){
     intent: detectIntent(item.title+' '+item.snippet, m.intentKeys),
     keywords: extractKeywords(item.title, item.snippet, query),
     score: calcScore(item),
-  })).sort((a,b)=>b.score-a.score);
+  })); // sorted by server: newest Reddit first, then Quora by score
 
   _threads = threads;
   _clusters = buildClusters(threads);
@@ -574,7 +573,10 @@ function renderThreadsTab(){
             <div class="ttitle"><a href="${t.url}" target="_blank" rel="noopener">${t.title}</a></div>
             <div class="tmeta">
               <span>${t.displayUrl}</span>
-              ${t.snippet ? `<span style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.snippet.substring(0,80)}...</span>` : ''}
+              ${t.comments ? `<span>💬 ${t.comments} comments</span>` : ''}
+              ${t.upvotes ? `<span>▲ ${t.upvotes} upvotes</span>` : ''}
+              ${t.daysAgo !== null && t.daysAgo !== undefined ? `<span>${t.daysAgo === 0 ? 'today' : t.daysAgo + 'd ago'}</span>` : ''}
+              ${t.snippet ? `<span style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.snippet.substring(0,80)}...</span>` : ''}
             </div>
             <div class="tkws">
               <span class="ichip" style="${IC[t.intent]||''}">${t.intent}</span>
