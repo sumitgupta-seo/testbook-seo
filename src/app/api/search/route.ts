@@ -93,9 +93,7 @@ async function searchReddit(query: string): Promise<object[]> {
           url: `https://reddit.com${p.permalink}`,
           displayLink: `reddit.com/r/${p.subreddit}`,
           snippet: p.selftext ? p.selftext.substring(0, 200) : '',
-          upvotes: p.score,
           comments: p.num_comments,
-          created_utc: p.created_utc,
           daysAgo: Math.floor((Date.now()/1000 - p.created_utc) / 86400),
         });
       }
@@ -107,42 +105,36 @@ async function searchReddit(query: string): Promise<object[]> {
 
 async function searchQuora(query: string): Promise<object[]> {
   try {
-    // Use short base query for better Quora results, last 2 years
+    // Use first 2-3 words for broad coverage, NO date filter (Quora answers are evergreen)
     const baseQuery = query.split(' ').slice(0, 3).join(' ');
-    
-    // Run 2 Quora searches - last 1 year only (no old content)
-    const [res1, res2] = await Promise.allSettled([
-      fetch(
-        `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:y`,
-        {}
-      ),
-      fetch(
-        `https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' preparation site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en&tbs=qdr:y`,
-        {}
-      ),
-    ]);
+    // 1 SerpAPI call per query — no date filter, get best results
+    const searches = [
+      fetch(`https://serpapi.com/search.json?engine=google&q=${encodeURIComponent(baseQuery + ' site:quora.com')}&api_key=${SERP_KEY}&num=10&gl=in&hl=en`, {}),
+    ];
 
+    const responses = await Promise.allSettled(searches);
     const results: object[] = [];
     const seen = new Set<string>();
 
-    for (const res of [res1, res2]) {
+    for (const res of responses) {
       if (res.status !== 'fulfilled') continue;
-      const data = await res.value.json();
-      for (const r of (data.organic_results || []) as SerpResult[]) {
-        if (seen.has(r.link)) continue;
-        seen.add(r.link);
-        results.push({
-          source: 'quora',
-          title: r.title.replace(/ - Quora$/, '').replace(/ \| Quora$/, ''),
-          url: r.link,
-          displayLink: 'quora.com',
-          snippet: r.snippet || '',
-          upvotes: 0,
-          comments: 0,
-          created_utc: 0,
-          daysAgo: null,
-        });
-      }
+      try {
+        const data = await res.value.json();
+        for (const r of (data.organic_results || []) as SerpResult[]) {
+          if (seen.has(r.link)) continue;
+          seen.add(r.link);
+          results.push({
+            source: 'quora',
+            title: r.title.replace(/ - Quora$/, '').replace(/ | Quora$/, ''),
+            url: r.link,
+            displayLink: 'quora.com',
+            snippet: r.snippet || '',
+            comments: 0,
+            created_utc: 0,
+            daysAgo: null,
+          });
+        }
+      } catch(e) { continue; }
     }
     return results;
   } catch(e) {
@@ -150,45 +142,56 @@ async function searchQuora(query: string): Promise<object[]> {
   }
 }
 
+function extractAnswerCount(snippet: string): number {
+  // Extract answer count from Quora snippets e.g. "7 answers", "10+ answers"
+  const match = snippet.match(/(\d+)\+?\s*answers?/i);
+  if (match) return parseInt(match[1]);
+  return 0;
+}
+
 function calcSEOScore(item: {
   source: string;
-  upvotes: number;
   comments: number;
   daysAgo: number | null;
   title: string;
   snippet: string;
 }): number {
   let score = 40;
+  const t = item.title.toLowerCase();
+  const s = item.snippet.toLowerCase();
 
-  // RECENCY — most important
-  if (item.daysAgo !== null) {
-    if (item.daysAgo <= 7)   score += 30;
-    else if (item.daysAgo <= 30)  score += 22;
-    else if (item.daysAgo <= 90)  score += 15;
-    else if (item.daysAgo <= 180) score += 8;
-    else if (item.daysAgo <= 365) score += 3;
+  if (item.source === 'quora') {
+    // QUORA: Score by answer count (extracted from snippet)
+    const answers = extractAnswerCount(item.snippet);
+    if (answers >= 10)     score += 30;
+    else if (answers >= 5) score += 20;
+    else if (answers >= 2) score += 10;
+    else if (answers >= 1) score += 5;
+
+    // Recency from snippet text
+    if (s.includes('days ago') || s.includes('weeks ago')) score += 15;
+    else if (s.includes('months ago'))                      score += 8;
+    else if (s.includes('year ago'))                        score += 3;
+
   } else {
-    score += 5; // Quora - unknown date, small bonus
+    // REDDIT: Score by comment count (real data from API)
+    if (item.comments >= 100)     score += 25;
+    else if (item.comments >= 50) score += 18;
+    else if (item.comments >= 20) score += 12;
+    else if (item.comments >= 5)  score += 6;
+
+    // Recency by daysAgo (real data)
+    if (item.daysAgo !== null) {
+      if (item.daysAgo <= 7)        score += 15;
+      else if (item.daysAgo <= 30)  score += 10;
+      else if (item.daysAgo <= 90)  score += 5;
+    }
   }
 
-  // COMMENTS — second most important
-  if (item.comments >= 100) score += 20;
-  else if (item.comments >= 50) score += 15;
-  else if (item.comments >= 20) score += 10;
-  else if (item.comments >= 10) score += 6;
-  else if (item.comments >= 3)  score += 3;
-
-  // UPVOTES
-  if (item.upvotes >= 500) score += 15;
-  else if (item.upvotes >= 100) score += 10;
-  else if (item.upvotes >= 50)  score += 7;
-  else if (item.upvotes >= 10)  score += 4;
-
-  // TITLE QUALITY
-  const t = item.title.toLowerCase();
-  if (t.includes('?')) score += 5;
-  const highIntentWords = ['vs', 'best', 'worth', 'failed', 'salary', 'cutoff', 'without coaching', 'strategy', 'how to', 'should i'];
-  highIntentWords.forEach(w => { if (t.includes(w)) score += 3; });
+  // TITLE QUALITY — both sources
+  if (t.includes('?')) score += 8;
+  const highIntentWords = ['salary', 'cutoff', 'worth', 'failed', 'vs', 'strategy', 'how to', 'should i', 'without coaching', 'best'];
+  highIntentWords.forEach(w => { if (t.includes(w)) score += 5; });
 
   return Math.min(score, 99);
 }
@@ -197,7 +200,7 @@ export async function GET(request: NextRequest) {
   const query = request.nextUrl.searchParams.get('q');
   if (!query) return NextResponse.json({ error: 'No query' }, { status: 400 });
 
-  // Run Reddit and Quora searches in parallel
+  // Run Reddit and Quora in parallel
   const [redditRaw, quoraRaw] = await Promise.allSettled([
     searchReddit(query),
     searchQuora(query),
@@ -206,15 +209,20 @@ export async function GET(request: NextRequest) {
   const reddit = redditRaw.status === 'fulfilled' ? redditRaw.value : [];
   const quora = quoraRaw.status === 'fulfilled' ? quoraRaw.value : [];
 
-  // Combine, score, sort by recency then score
-  const all = [...reddit, ...quora] as Array<{
+  // Deduplicate by URL across both sources
+  const seen = new Set<string>();
+  const all = [...reddit, ...quora].filter((item: object) => {
+    const i = item as { url: string };
+    if (seen.has(i.url)) return false;
+    seen.add(i.url);
+    return true;
+  }) as Array<{
     source: string;
     title: string;
     url: string;
     displayLink: string;
     snippet: string;
-    upvotes: number;
-    comments: number;
+      comments: number;
     created_utc: number;
     daysAgo: number | null;
   }>;
@@ -224,16 +232,15 @@ export async function GET(request: NextRequest) {
     seoScore: calcSEOScore(item),
   }));
 
-  // Sort: Reddit newest first, then by SEO score
+  // Sort: Reddit newest first, then Quora by score
   scored.sort((a, b) => {
-    // Prioritize recent Reddit posts
-    if (a.daysAgo !== null && b.daysAgo !== null) {
-      return a.daysAgo - b.daysAgo; // newer first
-    }
+    if (a.daysAgo !== null && b.daysAgo !== null) return a.daysAgo - b.daysAgo;
     if (a.daysAgo !== null) return -1;
     if (b.daysAgo !== null) return 1;
     return b.seoScore - a.seoScore;
   });
 
-  return NextResponse.json({ items: scored });
+  return NextResponse.json({ items: scored, 
+    _meta: { reddit: reddit.length, quora: quora.length, total: scored.length }
+  });
 }
