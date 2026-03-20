@@ -23,7 +23,8 @@ function extractCommentCount(snippet: string): number {
   return match ? parseInt(match[1]) : 0;
 }
 
-function detectDaysAgo(snippet: string): number | null {
+function detectDaysAgo(snippet: string): number {
+  // Returns days ago — always returns a number, defaults to 999 (old/unknown)
   const s = snippet.toLowerCase();
   const hoursMatch = s.match(/(\d+)\s*hours?\s*ago/);
   if (hoursMatch) return 0;
@@ -33,25 +34,31 @@ function detectDaysAgo(snippet: string): number | null {
   if (weeksMatch) return parseInt(weeksMatch[1]) * 7;
   const monthsMatch = s.match(/(\d+)\s*months?\s*ago/);
   if (monthsMatch) return parseInt(monthsMatch[1]) * 30;
-  if (s.includes('year ago')) return 365;
   const yearsMatch = s.match(/(\d+)\s*years?\s*ago/);
   if (yearsMatch) return parseInt(yearsMatch[1]) * 365;
-  return null;
+  if (s.includes('year ago')) return 365;
+  return 999; // unknown date — treat as old
 }
 
-// STRICT: title must contain at least one meaningful query word
+// STRICT: title must contain ALL meaningful query words (2+ words required)
 function isTitleRelevant(title: string, query: string): boolean {
-  const stopWords = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'for', 'and', 'or', 'to', 'in', 'of', 'it']);
+  const stopWords = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'for', 'and', 'or', 'to', 'in', 'of', 'it', 'do', 'how', 'what', 'why', 'when', 'which']);
   const queryWords = query.toLowerCase().split(' ').filter(w => w.length > 2 && !stopWords.has(w));
   const titleLower = title.toLowerCase();
-  return queryWords.some(w => titleLower.includes(w));
+  
+  if (queryWords.length === 0) return false;
+  if (queryWords.length === 1) return titleLower.includes(queryWords[0]);
+  
+  // For multi-word queries: title must contain at least 2 query words
+  const matchCount = queryWords.filter(w => titleLower.includes(w)).length;
+  return matchCount >= Math.min(2, queryWords.length);
 }
 
 function calcSEOScore(item: {
   source: string;
   title: string;
   snippet: string;
-  daysAgo: number | null;
+  daysAgo: number;
   comments: number;
   answers: number;
 }): number {
@@ -72,12 +79,11 @@ function calcSEOScore(item: {
   }
 
   // Recency bonus
-  if (item.daysAgo !== null) {
+  
     if (item.daysAgo <= 7)        score += 20;
     else if (item.daysAgo <= 30)  score += 12;
     else if (item.daysAgo <= 90)  score += 6;
     else if (item.daysAgo <= 365) score += 2;
-  }
 
   // Title quality
   if (t.includes('?')) score += 8;
@@ -108,7 +114,7 @@ export async function GET(request: NextRequest) {
     snippet: string;
     comments: number;
     answers: number;
-    daysAgo: number | null;
+    daysAgo: number;
     seoScore: number;
   }> = [];
 
@@ -176,8 +182,8 @@ export async function GET(request: NextRequest) {
   // Items with known daysAgo come first, sorted newest to oldest
   // Items with unknown date sorted by SEO score after
   results.sort((a, b) => {
-    const aHasDate = a.daysAgo !== null;
-    const bHasDate = b.daysAgo !== null;
+    const aHasDate = true;
+    const bHasDate = true;
 
     if (aHasDate && bHasDate) return a.daysAgo! - b.daysAgo!; // newer first
     if (aHasDate && !bHasDate) return -1; // dated content first
